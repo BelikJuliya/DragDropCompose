@@ -2,6 +2,7 @@ package com.example.animationsample.sample
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -9,6 +10,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
@@ -21,17 +23,31 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Preview
 @Composable
 fun DragDrop() {
-    var points: List<Offset> by remember { mutableStateOf(emptyList()) }
+    var points: List<Point> by remember { mutableStateOf(emptyList()) }
     Canvas(
         modifier = Modifier
             .fillMaxSize()
             .pointerInput(key1 = Unit) {
-                detectTapGestures {
-                    points += it
-                }
+                detectDragGestures(
+                    onDrag = { change, _ ->
+                        points += change.historical.map {
+                            Point(
+                                offset = it.position,
+                                isStartPosition = false
+                            )
+                        }
+                    },
+                    onDragStart = {
+                        points += Point(
+                            offset = it,
+                            isStartPosition = true
+                        )
+                    }
+                )
             }
             .background(
                 color = Color.White
@@ -57,16 +73,11 @@ fun DragDrop() {
             style = Fill,
         )
         val path = Path()
-        points.forEachIndexed { index, offset ->
-            if (index == 0) {
-                path.moveTo(offset.x, offset.y)
-                drawCircle(
-                    brush = Brush.linearGradient(colors = listOf(Color.Blue, Color.Cyan, Color.Magenta)),
-                    radius = 20.dp.toPx(),
-                    center = offset
-                )
+        points.forEach { point ->
+            if (point.isStartPosition) {
+                path.moveTo(x = point.offset.x, y = point.offset.y)
             } else {
-                path.lineTo(offset.x, offset.y)
+                path.lineTo(point.offset.x, point.offset.y)
             }
         }
         drawPath(
@@ -85,3 +96,8 @@ fun DragDrop() {
 //        }
     }
 }
+
+data class Point(
+    val offset: Offset,
+    val isStartPosition: Boolean
+)
